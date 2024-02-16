@@ -146,7 +146,7 @@ def calculate_effective_distance(flow_matrix_data, nodes, virus_info):
             firsts_day.append(item[0][0])
             firsts_dis.append(sorted_distance[n])
             city_names_dis.append(city_name)
-        print(city_name, sorted_distance[n])
+        # print(city_name, sorted_distance[n])
 
     plt.figure(figsize=(10, 6))
     # This turns off minor ticks on the y-axis
@@ -160,6 +160,7 @@ def calculate_effective_distance(flow_matrix_data, nodes, virus_info):
     ax = plt.gca()
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    plt.savefig('figure/effective_distance_flow.png', dpi=600)
     plt.show()
 
 
@@ -208,6 +209,7 @@ def comparison_date_distance():
     plt.xlabel('Effective Distance', fontsize=14)
     plt.ylabel('Reported Date After First Patient', fontsize=14)
     plt.legend(loc='upper left', shadow=True, numpoints=1, fontsize=10)
+    plt.savefig('figure/effective_distance_date.png', dpi=600)
     plt.show()
 
 
@@ -232,10 +234,17 @@ if __name__ == '__main__':
     firsts_dis = []
     city_names_dis = []
 
+    # Get the virus info of different cities
     shanghai_virus_info = preprocess_virus_info("上海市")
     wuhan_virus_info = preprocess_virus_info("武汉市")
+
+    # Calculate the effective distance
     calculate_effective_distance(flow_matrix_2020, nodes_2020, shanghai_virus_info)
+
+    # Combine the date with the effective distance
     comparison_date_distance()
+
+    # Apply the sir model for Shanghai
     sir.apply_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, first_cases, False)
     sir.apply_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, first_cases, True)
     sir.verify_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, wuhan_virus_info, first_cases, False)

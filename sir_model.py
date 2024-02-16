@@ -86,6 +86,7 @@ def verify_sir_model(flow_matrix_data, nodes, city_properties, virus_info, first
     plt.xlabel('Days(From 2020.1.10)')
     plt.ylabel('Infected Population(Log)')
     plt.yscale('log')
+    plt.savefig('figure/sir_model_verification_intervention_{}.png'.format(intervention), dpi=600)
     plt.show()
 
 
@@ -133,4 +134,5 @@ def apply_sir_model(flow_matrix_data, nodes, city_properties, first_cases, inter
     plt.legend(loc='upper left', shadow=True, numpoints=1, fontsize=10)
     plt.xlabel('Days(From 2020.1.20)')
     plt.ylabel('Infected Population')
+    plt.savefig('figure/sir_model_intervention_{}.png'.format(intervention), dpi=600)
     plt.show()

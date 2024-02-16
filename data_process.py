@@ -21,7 +21,7 @@ def read_flow_data():
 # The whole workflow of the data preprocess
 # The process has abandoned as we found the data which has already been processed
 def preprocess_data_workflow():
-    city_info_2020 = id_to_city(pd.read_csv('county_city_province.csv'))
+    city_info_2020 = id_to_city(pd.read_csv('country_city_province.csv'))
     city_flow_matrix_2020 = read_flow_data()
     pickle.dump(city_info_2020, open('city_info_2020.pkl', 'wb'), pickle.HIGHEST_PROTOCOL)
     pickle.dump(city_flow_matrix_2020, open('city_flow_matrix_2020.pkl', 'wb'), pickle.HIGHEST_PROTOCOL)

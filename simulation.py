@@ -153,7 +153,7 @@ def calculate_effective_distance(flow_matrix_data, nodes, virus_info):
     plt.tick_params(axis='y', which='minor', left=False)
     plt.xlim(2.5, 15)
     plt.rcParams['axes.unicode_minus'] = False
-    plt.plot(eff_dist[shanghai_id, :], flow_matrix_data[shanghai_id, :], 'o', color='royalblue', markersize=8)
+    plt.plot(eff_dist[shanghai_id, :], flow_matrix_data[shanghai_id, :], 'o', color='royalblue', markersize=5)
     plt.xlabel('Effective Distance')
     plt.ylabel('Proportion of Population Flow')
     plt.yscale('log')
@@ -185,12 +185,13 @@ def comparison_date_distance():
     bools1 = (xx != math.inf) & (xx > 5.5)
     slope1, intercept1, r_value1, _, _ = stats.linregress(xx[bools1], yy[bools1])
 
-    plt.scatter(xx[bools], yy[bools], s=50, color='red')
-    plt.scatter(xx[bools1], yy[bools1], s=10, color='green')
-    plt.scatter(firsts_dis[41], firsts_day[41], s=80, color='orange')
+    plt.scatter(xx[bools], yy[bools], s=60, color='royalblue')
+    plt.scatter(xx[bools1], yy[bools1], s=12, color='orange')
+    plt.scatter(firsts_dis[41], firsts_day[41], s=80, color='firebrick')
 
-    plt.plot(xx[bools_default], slope * xx[bools_default] + intercept, 'r-', label='All the cities')
-    plt.plot(xx[bools1], slope1 * xx[bools1] + intercept1, 'g-', label='Only cities with effective distances > 5.5')
+    plt.plot(xx[bools_default], slope * xx[bools_default] + intercept, color='firebrick', label='All the cities')
+    plt.plot(xx[bools1], slope1 * xx[bools1] + intercept1, color='forestgreen',
+             label='Only cities with effective distances > 5.5')
 
     # 0 Suzhou 8 Yancheng 11 Beijing 15 Chongqing
     plt.annotate("Suzhou", (firsts_dis[0], firsts_day[0]), textcoords="offset points", xytext=(0, 10),

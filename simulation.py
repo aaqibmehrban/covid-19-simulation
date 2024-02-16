@@ -12,17 +12,28 @@ from tqdm import trange
 # Get the virus info/infected numbers from the news
 # As the data is mainly in Chinese, and we do not have so much time to translate it
 # So it is sorry to make it not readable
+# 上海市 - Shanghai
+# 武汉市 - Wuhan
 def preprocess_virus_info(city):
+    # Load the data
     news_data = pd.ExcelFile('data/city_cases.xlsx').parse("Sheet1")
+    # Retrieve unique cities from the data, excluding the first entry
     all_reported_cities = list(set(news_data['城市']))[1:]
+    # Extend the city list with additional key cities
     all_reported_cities = all_reported_cities + ['北京市', '深圳市', '重庆市', '广州市']
+    # Filter data for the specified city
     city_virus = news_data.loc[
         news_data['城市'] == city, ['新增确诊病例', '确诊/出院', '公开报道时间', '新增治愈出院数', '新增死亡数']]
 
+    # Sort the data by diagnosis/outcome date
     city_virus.sort_values(by='确诊/出院')
+    # Reset index after sorting
     city_virus.reset_index(drop=True, inplace=True)
+    # Get the date of the first reported case
     first_date = city_virus.iloc[-1]['确诊/出院']
+    # Initialize global variable for the first cases count
     global first_cases
+    # Determine the initial number of cases, using a minimum of 4
     first_cases = 4 if 4 > city_virus.iloc[-1]['新增确诊病例'] else city_virus.iloc[-1]['新增确诊病例']
 
     # municipality is used to distinguish the municipality
@@ -39,14 +50,16 @@ def preprocess_virus_info(city):
                                                  '新增死亡数', '省份']]
             municipality = True
 
-        # We confirm the virus situation of each city
+        # Extract arrays of cases, cures, deaths and dates
         new_cases = np.array(subset["新增确诊病例"])
         cued_cases = np.array(subset['新增治愈出院数'])
         die_cases = np.array(subset['新增死亡数'])
         found_virus_dates = list(subset['确诊/出院'])
         reported_dates = list(subset['公开报道时间'])
+        # Calculate days from the first reported case
         days = []
         for i, date in enumerate(found_virus_dates):
+            # Use reported date if diagnosis date is missing
             if pd.isna(date):
                 date = reported_dates[i]
             if not pd.isna(date):
@@ -67,24 +80,36 @@ def preprocess_virus_info(city):
 
 
 def my_matrix_production(matrix, matrix_copy):
-    # Special matrix products that convert plus to max
+    # Perform a special kind of matrix multiplication that uses 'maximum' instead of 'sum' across the third dimension.
+    # Size of the matrix (assuming square matrix)
     sz = matrix.shape[0]
+    # Initialize the output matrix with zeros
     output = np.zeros([sz, sz])
+    # Perform the custom matrix product
     for i in range(sz):
         output[i, :] = np.max(matrix[i, :, None] * matrix_copy, axis=0)
     return output
 
 
 def eff_distance(prob):
+    # Calculate the effective distance between nodes in a network based on a probability matrix.
+    # Size of the probability matrix (assuming square matrix)
     sz = prob.shape[0]
+    # Small constant to prevent log of zero
     epsilon = 1e-9
+    # Start with the original probability matrix
     prod = prob
+    # Initialize the distance matrix based on the probability matrix
     distance = np.ones([sz, sz]) - np.log(prod + epsilon)
+    # Iteratively calculate the effective distance
     for i in trange(1, sz - 1):
+        # Update the product matrix using the custom matrix product function
         prod = my_matrix_production(prod, prob)
+        # Calculate the distance matrix for this iteration
         dist = i + 1 - np.log(prod + epsilon)
+        # Update the overall distance matrix with the minimum distances
         distance = np.minimum(distance, dist)
-    # Save the effective_distance array
+    # Save the effective distance matrix to a file
     np.save("data/effective_distance.npy", distance)
     return distance
 
@@ -121,15 +146,20 @@ def calculate_effective_distance(flow_matrix_data, nodes, virus_info):
             firsts_day.append(item[0][0])
             firsts_dis.append(sorted_distance[n])
             city_names_dis.append(city_name)
-        # print(city_name, sorted_distance[n])
+        print(city_name, sorted_distance[n])
 
-    plt.figure(figsize=(12, 6))
-    plt.tick_params(axis='y', which='minor', left=False)  # This turns off minor ticks on the y-axis
+    plt.figure(figsize=(10, 6))
+    # This turns off minor ticks on the y-axis
+    plt.tick_params(axis='y', which='minor', left=False)
+    plt.xlim(2.5, 15)
     plt.rcParams['axes.unicode_minus'] = False
     plt.plot(eff_dist[shanghai_id, :], flow_matrix_data[shanghai_id, :], 'o', color='royalblue', markersize=8)
     plt.xlabel('Effective Distance')
-    plt.ylabel('Proportion of Outflow')
+    plt.ylabel('Proportion of Population Flow')
     plt.yscale('log')
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
     plt.show()
 
 
@@ -171,6 +201,9 @@ def comparison_date_distance():
     plt.annotate("Wuhan", (firsts_dis[41], firsts_day[41]), textcoords="offset points", xytext=(0, 10),
                  ha='center', fontsize=14)
 
+    ax = plt.gca()
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     plt.rcParams['axes.unicode_minus'] = False
     plt.xlabel('Effective Distance', fontsize=14)
     plt.ylabel('Reported Date After First Patient', fontsize=14)

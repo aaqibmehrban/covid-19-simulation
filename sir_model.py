@@ -4,25 +4,37 @@ from scipy.integrate import odeint
 
 
 def protect_decay(t, t0, eta, rate_time):
+    # Small constant to avoid division by zero
     epsilon = 0.001
+    # Calculate decay rate
     r = 2 * np.log((1 - epsilon) / epsilon) / rate_time
+    # Midpoint of decay
     x0 = t0 + rate_time / 2
+    # Decay function for protective measures
     decay = eta / (1 + np.exp(r * (t - x0))) + 1 - eta
     return decay
 
 
 def sir_model(population, t, alpha, beta, gamma, eta, rate_time, protect_day, flow_matrix_data, intervention):
+    # Size of the susceptible and infected populations
     sz = population.shape[0] // 2
+    # Infected population
     js = population[:sz]
+    # Susceptible population
     ss = population[sz:]
+    # Terms for movement of infected and susceptible populations
     jterm = js.dot(flow_matrix_data) - js
     sterm = ss.dot(flow_matrix_data) - ss
+    # Cross term for infection rate, modified by protective measures if intervention is True
     if not intervention:
         cross_term = alpha * js * ss
     else:
         cross_term = alpha * protect_decay(t, protect_day, eta, rate_time) * js * ss
+    # Change in infected population
     delta_i = cross_term - beta * js + gamma * jterm
+    # Change in susceptible population
     delta_s = - cross_term + gamma * sterm
+    # Combined change for the SIR model
     result = np.r_[delta_i, delta_s]
     return result
 
@@ -67,6 +79,9 @@ def verify_sir_model(flow_matrix_data, nodes, city_properties, virus_info, first
                 infected_number = item[1] - item[2] - item[3]
                 plt.plot(item[0], infected_number, 'o', color=colors[n])
 
+    ax = plt.gca()
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     plt.legend(loc='upper left', shadow=True, numpoints=1, fontsize=10)
     plt.xlabel('Days(From 2020.1.10)')
     plt.ylabel('Infected Population(Log)')
@@ -112,6 +127,9 @@ def apply_sir_model(flow_matrix_data, nodes, city_properties, first_cases, inter
             plt.plot(timespan[:plot_time_span],
                      simulation_result[:plot_time_span, idx] * city_properties[city_name]['pop'], color=colors[n],
                      label=cities_name_eng[city_name], linewidth=line_width_value)
+    ax = plt.gca()
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     plt.legend(loc='upper left', shadow=True, numpoints=1, fontsize=10)
     plt.xlabel('Days(From 2020.1.20)')
     plt.ylabel('Infected Population')

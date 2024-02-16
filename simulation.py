@@ -12,18 +12,18 @@ from tqdm import trange
 # Get the virus info/infected numbers from the news
 # As the data is mainly in Chinese, and we do not have so much time to translate it
 # So it is sorry to make it not readable
-def preprocess_virus_info():
+def preprocess_virus_info(city):
     news_data = pd.ExcelFile('data/city_cases.xlsx').parse("Sheet1")
     all_reported_cities = list(set(news_data['城市']))[1:]
-    all_reported_cities = all_reported_cities + ['北京市', '天津市', '重庆市']
-    shanghai_virus = news_data.loc[
-        news_data['城市'] == '上海市', ['新增确诊病例', '确诊/出院', '公开报道时间', '新增治愈出院数', '新增死亡数']]
+    all_reported_cities = all_reported_cities + ['北京市', '深圳市', '重庆市', '广州市']
+    city_virus = news_data.loc[
+        news_data['城市'] == city, ['新增确诊病例', '确诊/出院', '公开报道时间', '新增治愈出院数', '新增死亡数']]
 
-    shanghai_virus.sort_values(by='确诊/出院')
-    shanghai_virus.reset_index(drop=True, inplace=True)
-    first_date = shanghai_virus.iloc[-1]['确诊/出院']
+    city_virus.sort_values(by='确诊/出院')
+    city_virus.reset_index(drop=True, inplace=True)
+    first_date = city_virus.iloc[-1]['确诊/出院']
     global first_cases
-    first_cases = 4 if 4 > shanghai_virus.iloc[-1]['新增确诊病例'] else shanghai_virus.iloc[-1]['新增确诊病例']
+    first_cases = 4 if 4 > city_virus.iloc[-1]['新增确诊病例'] else city_virus.iloc[-1]['新增确诊病例']
 
     # municipality is used to distinguish the municipality
     # which means the city name is the province name
@@ -123,10 +123,13 @@ def calculate_effective_distance(flow_matrix_data, nodes, virus_info):
             city_names_dis.append(city_name)
         # print(city_name, sorted_distance[n])
 
+    plt.figure(figsize=(12, 6))
+    plt.tick_params(axis='y', which='minor', left=False)  # This turns off minor ticks on the y-axis
     plt.rcParams['axes.unicode_minus'] = False
-    plt.semilogy(eff_dist[shanghai_id, :], flow_matrix_data[shanghai_id, :], 'o', color='royalblue', markersize=8)
+    plt.plot(eff_dist[shanghai_id, :], flow_matrix_data[shanghai_id, :], 'o', color='royalblue', markersize=8)
     plt.xlabel('Effective Distance')
     plt.ylabel('Proportion of Outflow')
+    plt.yscale('log')
     plt.show()
 
 
@@ -152,7 +155,7 @@ def comparison_date_distance():
     slope1, intercept1, r_value1, _, _ = stats.linregress(xx[bools1], yy[bools1])
 
     plt.scatter(xx[bools], yy[bools], s=50, color='red')
-    plt.scatter(xx[bools1], yy[bools1], s=10, color='blue')
+    plt.scatter(xx[bools1], yy[bools1], s=10, color='green')
     plt.scatter(firsts_dis[41], firsts_day[41], s=80, color='orange')
 
     plt.plot(xx[bools_default], slope * xx[bools_default] + intercept, 'r-', label='All the cities')
@@ -196,8 +199,10 @@ if __name__ == '__main__':
     firsts_dis = []
     city_names_dis = []
 
-    cities_virus_info = preprocess_virus_info()
-    calculate_effective_distance(flow_matrix_2020, nodes_2020, cities_virus_info)
+    shanghai_virus_info = preprocess_virus_info("上海市")
+    wuhan_virus_info = preprocess_virus_info("武汉市")
+    calculate_effective_distance(flow_matrix_2020, nodes_2020, shanghai_virus_info)
     comparison_date_distance()
-    sir.apply_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, cities_virus_info, first_cases, False)
-    sir.apply_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, cities_virus_info, first_cases, True)
+    sir.apply_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, first_cases, False)
+    sir.apply_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, first_cases, True)
+    sir.verify_sir_model(flow_matrix_2020, nodes_2020, city_properties_2020, wuhan_virus_info, first_cases, False)

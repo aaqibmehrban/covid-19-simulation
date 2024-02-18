@@ -18,6 +18,7 @@ fig5=sir.verify_sir_model_plotly(flow_matrix_2020, nodes_2020, city_properties_2
 
 
 app = Dash(__name__)
+server = app.server
 
 app.layout = html.Div([
     html.Div([
@@ -49,4 +50,5 @@ app.layout = html.Div([
 
 if __name__ == '__main__':
     app.run_server(debug=True)
+    
 

@@ -1,33 +1,114 @@
 import plotly.graph_objects as go
 import numpy as np
 from scipy import stats
-from simulation import *
+import pickle
+import sir_model as sir
+import pandas as pd
+from scipy import stats
+from tqdm import trange
 import copy
 
- # The flow matrix data
-f = open('data/pij.pkl', 'rb')
-flow_matrix_2020 = pickle.load(f)
-f.close()
 
-# The id of the city data
-f = open('data/nodes.pkl', 'rb')
-nodes_2020 = pickle.load(f)
-f.close()
 
-# The info of the city data
-f = open('data/city_info.pkl', 'rb')
-city_properties_2020 = pickle.load(f)
-f.close()
 
-first_cases = 0
-firsts_day = []
-firsts_dis = []
-city_names_dis = []
+def preprocess_virus_info(city):
+    # Load the data
+    news_data = pd.ExcelFile('data/city_cases.xlsx').parse("Sheet1")
+    # Retrieve unique cities from the data, excluding the first entry
+    all_reported_cities = list(set(news_data['城市']))[1:]
+    # Extend the city list with additional key cities
+    all_reported_cities = all_reported_cities + ['北京市', '深圳市', '重庆市', '广州市']
+    # Filter data for the specified city
+    city_virus = news_data.loc[
+        news_data['城市'] == city, ['新增确诊病例', '确诊/出院', '公开报道时间', '新增治愈出院数', '新增死亡数']]
 
-# Get the virus info of different cities
-shanghai_virus_info = preprocess_virus_info("上海市")
-wuhan_virus_info = preprocess_virus_info("武汉市")
+    # Sort the data by diagnosis/outcome date
+    city_virus.sort_values(by='确诊/出院')
+    # Reset index after sorting
+    city_virus.reset_index(drop=True, inplace=True)
+    # Get the date of the first reported case
+    first_date = city_virus.iloc[-1]['确诊/出院']
+    # Initialize global variable for the first cases count
+    global first_cases
+    # Determine the initial number of cases, using a minimum of 4
+    first_cases = 4 if 4 > city_virus.iloc[-1]['新增确诊病例'] else city_virus.iloc[-1]['新增确诊病例']
 
+    # municipality is used to distinguish the municipality
+    # which means the city name is the province name
+    all_cities_cases = {}
+    for city in all_reported_cities:
+        subset = news_data.loc[
+            news_data['城市'] == city, ['新增确诊病例', '确诊/出院', '公开报道时间', '新增治愈出院数', '新增死亡数',
+                                        '省份']]
+        municipality = False
+        if len(subset) == 0:
+            subset = news_data.loc[
+                news_data['省份'] == city[:-1], ['新增确诊病例', '确诊/出院', '公开报道时间', '新增治愈出院数',
+                                                 '新增死亡数', '省份']]
+            municipality = True
+
+        # Extract arrays of cases, cures, deaths and dates
+        new_cases = np.array(subset["新增确诊病例"])
+        cued_cases = np.array(subset['新增治愈出院数'])
+        die_cases = np.array(subset['新增死亡数'])
+        found_virus_dates = list(subset['确诊/出院'])
+        reported_dates = list(subset['公开报道时间'])
+        # Calculate days from the first reported case
+        days = []
+        for i, date in enumerate(found_virus_dates):
+            # Use reported date if diagnosis date is missing
+            if pd.isna(date):
+                date = reported_dates[i]
+            if not pd.isna(date):
+                days.append(int((date - first_date) / np.timedelta64(1, 'D')))
+
+        sorted_days = np.sort(days)
+        # Statistic of patients in each city during the period(2020.1.10 - 2020.1.29)
+        days_index = np.argsort(days)
+        infected = np.cumsum(new_cases[days_index])
+        cued = np.cumsum(cued_cases[days_index])
+        death = np.cumsum(die_cases[days_index])
+        if len(sorted_days) > 0:
+            if municipality:
+                all_cities_cases[list(subset['省份'])[0] + '市'] = (sorted_days, infected, cued, death)
+            else:
+                all_cities_cases[city] = (sorted_days, infected, cued, death)
+    return all_cities_cases
+
+
+def my_matrix_production(matrix, matrix_copy):
+    # Perform a special kind of matrix multiplication that uses 'maximum' instead of 'sum' across the third dimension.
+    # Size of the matrix (assuming square matrix)
+    sz = matrix.shape[0]
+    # Initialize the output matrix with zeros
+    output = np.zeros([sz, sz])
+    # Perform the custom matrix product
+    for i in range(sz):
+        output[i, :] = np.max(matrix[i, :, None] * matrix_copy, axis=0)
+    return output
+
+
+def eff_distance(prob):
+    # Calculate the effective distance between nodes in a network based on a probability matrix.
+    # Size of the probability matrix (assuming square matrix)
+    sz = prob.shape[0]
+    # Small constant to prevent log of zero
+    epsilon = 1e-9
+    # Start with the original probability matrix
+    prod = prob
+    # Initialize the distance matrix based on the probability matrix
+    distance = np.ones([sz, sz]) - np.log(prod + epsilon)
+    # Iteratively calculate the effective distance
+    for i in trange(1, sz - 1):
+        # Update the product matrix using the custom matrix product function
+        prod = my_matrix_production(prod, prob)
+        # Calculate the distance matrix for this iteration
+        dist = i + 1 - np.log(prod + epsilon)
+        # Update the overall distance matrix with the minimum distances
+        distance = np.minimum(distance, dist)
+    # Save the effective distance matrix to a file
+    np.save("data/effective_distance.npy", distance)
+    return distance
 
 
 def comparison_date_distance_plotly():
@@ -45,20 +126,31 @@ def comparison_date_distance_plotly():
     fig = go.Figure()
 
     # Add traces
-    fig.add_trace(go.Scatter(x=xx[bools], y=yy[bools], mode='markers', marker_color='royalblue', name='Effective Distance < 5.5'))
-    fig.add_trace(go.Scatter(x=xx[bools1], y=yy[bools1], mode='markers', marker_color='orange', name='Effective Distance > 5.5'))
-    fig.add_trace(go.Scatter(x=[firsts_dis[41]], y=[firsts_day[41]], mode='markers', marker_color='firebrick', name='Wuhan', marker_size=10))
+    fig.add_trace(
+        go.Scatter(x=xx[bools], y=yy[bools], mode='markers', marker_color='royalblue', name='Effective Distance < 5.5'))
+    fig.add_trace(
+        go.Scatter(x=xx[bools1], y=yy[bools1], mode='markers', marker_color='orange', name='Effective Distance > 5.5'))
+    fig.add_trace(
+        go.Scatter(x=[firsts_dis[41]], y=[firsts_day[41]], mode='markers', marker_color='firebrick', name='Wuhan',
+                   marker_size=10))
 
     # Add lines
-    fig.add_trace(go.Scatter(x=xx[bools_default], y=slope * xx[bools_default] + intercept, mode='lines', name='Linear Fit: All Cities', line=dict(color='firebrick')))
-    fig.add_trace(go.Scatter(x=xx[bools1], y=slope1 * xx[bools1] + intercept1, mode='lines', name='Linear Fit: Distances > 5.5', line=dict(color='forestgreen')))
+    fig.add_trace(go.Scatter(x=xx[bools_default], y=slope * xx[bools_default] + intercept, mode='lines',
+                             name='Linear Fit: All Cities', line=dict(color='firebrick')))
+    fig.add_trace(
+        go.Scatter(x=xx[bools1], y=slope1 * xx[bools1] + intercept1, mode='lines', name='Linear Fit: Distances > 5.5',
+                   line=dict(color='forestgreen')))
 
     # Annotations
     annotations = [
-        dict(x=firsts_dis[0], y=firsts_day[0], xref='x', yref='y', text='Suzhou', showarrow=True, arrowhead=1, ax=0, ay=-40),
-        dict(x=firsts_dis[11], y=firsts_day[11], xref='x', yref='y', text='Beijing', showarrow=True, arrowhead=1, ax=0, ay=-40),
-        dict(x=firsts_dis[15], y=firsts_day[15], xref='x', yref='y', text='Chongqing', showarrow=True, arrowhead=1, ax=0, ay=-40),
-        dict(x=firsts_dis[41], y=firsts_day[41], xref='x', yref='y', text='Wuhan', showarrow=True, arrowhead=1, ax=0, ay=-40)
+        dict(x=firsts_dis[0], y=firsts_day[0], xref='x', yref='y', text='Suzhou', showarrow=True, arrowhead=1, ax=0,
+             ay=-40),
+        dict(x=firsts_dis[11], y=firsts_day[11], xref='x', yref='y', text='Beijing', showarrow=True, arrowhead=1, ax=0,
+             ay=-40),
+        dict(x=firsts_dis[15], y=firsts_day[15], xref='x', yref='y', text='Chongqing', showarrow=True, arrowhead=1,
+             ax=0, ay=-40),
+        dict(x=firsts_dis[41], y=firsts_day[41], xref='x', yref='y', text='Wuhan', showarrow=True, arrowhead=1, ax=0,
+             ay=-40)
     ]
     fig.update_layout(annotations=annotations)
 
@@ -72,6 +164,14 @@ def comparison_date_distance_plotly():
 
     return fig
 
+
+def find_in_nodes(index, nodes_set):
+    key = -1
+    for k, value in nodes_set.items():
+        if value == index:
+            key = k
+            break
+    return key
 
 
 def calculate_effective_distance_plotly(flow_matrix_data, nodes, virus_info, eff_distance=None):
@@ -135,3 +235,28 @@ def calculate_effective_distance_plotly(flow_matrix_data, nodes, virus_info, eff
     fig.update_yaxes(showline=True, linewidth=2, linecolor='black', mirror=True)
 
     return fig
+
+
+# The flow matrix data
+f = open('data/pij.pkl', 'rb')
+flow_matrix_2020 = pickle.load(f)
+f.close()
+
+# The id of the city data
+f = open('data/nodes.pkl', 'rb')
+nodes_2020 = pickle.load(f)
+f.close()
+
+# The info of the city data
+f = open('data/city_info.pkl', 'rb')
+city_properties_2020 = pickle.load(f)
+f.close()
+
+first_cases = 0
+firsts_day = []
+firsts_dis = []
+city_names_dis = []
+
+# Get the virus info of different cities
+shanghai_virus_info = preprocess_virus_info("上海市")
+wuhan_virus_info = preprocess_virus_info("武汉市")

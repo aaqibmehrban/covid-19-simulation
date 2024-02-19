@@ -16,20 +16,44 @@ app = Dash(__name__)
 server=app.server
 
 
+
+
 app.layout = html.Div([
     html.Div([
         html.H1("Covid 19 Simulation", style={'textAlign': 'center'})
     ], style={'background': 'linear-gradient(to right, lightgray, white)', 'padding': '1vh', 'margin-bottom': '2vh'}),
 
+    # Graph 1 with Header
     html.Div([
+        html.H3("Effective Distance vs. Proportion of Population Flow", style={'textAlign': 'center'}),
         dcc.Graph(id='graph-1', figure=fig1, style={'width': '90vw', 'height': '45vh'}),
-        dcc.Graph(id='graph-2', figure=fig2, style={'width': '90vw', 'height': '45vh'}),
-        dcc.Graph(id='graph-3', figure=fig3, style={'width': '90vw', 'height': '45vh'}),
-        dcc.Graph(id='graph-4', figure=fig4, style={'width': '90vw', 'height': '45vh'}),
-        dcc.Graph(id='graph-5', figure=fig5, style={'width': '90vw', 'height': '45vh'}),
-    ], style={'textAlign': 'center'})
-], style={'background-color': 'white', 'fontFamily': 'Arial, sans-serif', 'maxWidth': '100vw'})
+    ], style={'textAlign': 'center', 'margin-bottom': '2vh'}),
 
+    # Graph 2 with Header
+    html.Div([
+        html.H3("Comparison of Reported Date After First Patient by Effective Distance", style={'textAlign': 'center'}),
+        dcc.Graph(id='graph-2', figure=fig2, style={'width': '90vw', 'height': '45vh'}),
+    ], style={'textAlign': 'center', 'margin-bottom': '2vh'}),
+
+    # Graph 3 with Header
+    html.Div([
+        html.H3("Results", style={'textAlign': 'center'}),
+        dcc.Graph(id='graph-3', figure=fig3, style={'width': '90vw', 'height': '45vh'}),
+    ], style={'textAlign': 'center', 'margin-bottom': '2vh'}),
+
+    # Graph 4 with Header
+    html.Div([
+        html.H3("", style={'textAlign': 'center'}),
+        dcc.Graph(id='graph-4', figure=fig4, style={'width': '90vw', 'height': '45vh'}),
+    ], style={'textAlign': 'center', 'margin-bottom': '2vh'}),
+
+    # Graph 5 with Header
+    html.Div([
+        html.H3("SIR Model Simulation vs Actual Infection Data", style={'textAlign': 'center'}),
+        dcc.Graph(id='graph-5', figure=fig5, style={'width': '90vw', 'height': '45vh'}),
+    ], style={'textAlign': 'center', 'margin-bottom': '2vh'}),
+
+], style={'background-color': 'white', 'fontFamily': 'Arial, sans-serif', 'maxWidth': '100vw'})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

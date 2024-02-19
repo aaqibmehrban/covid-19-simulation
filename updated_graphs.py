@@ -155,12 +155,15 @@ def comparison_date_distance_plotly():
     fig.update_layout(annotations=annotations)
 
     # Update layout
-    fig.update_layout(title='Comparison of Reported Date After First Patient by Effective Distance',
-                      xaxis_title='Effective Distance',
+    fig.update_layout(
+        # title='Comparison of Reported Date After First Patient by Effective Distance',
+                      xaxis_title='',
                       yaxis_title='Reported Date After First Patient',
                       legend_title='Legend',
                       legend=dict(orientation="h"),
-                      margin=dict(l=0, r=0, t=30, b=0))
+                      margin=dict(l=0, r=0, t=30, b=0),
+
+    )
 
     return fig
 
@@ -220,7 +223,7 @@ def calculate_effective_distance_plotly(flow_matrix_data, nodes, virus_info, eff
 
     # Update layout for aesthetics similar to the original Matplotlib plot
     fig.update_layout(
-        title='Effective Distance vs. Proportion of Population Flow',
+        # title='Effective Distance vs. Proportion of Population Flow',
         xaxis_title='Effective Distance',
         yaxis_title='Proportion of Population Flow',
         yaxis_type='log',  # Set y-axis to logarithmic scale
